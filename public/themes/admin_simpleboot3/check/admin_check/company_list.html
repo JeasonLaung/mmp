@@ -1,0 +1,254 @@
+<include file="public@header"/>
+<include file="public@message"/>
+</head>
+<body>
+<div class="wrap js-check-wrap">
+    <ul class="nav nav-tabs">
+        <li class="active"><a href="javascript:;">审核列表</a></li>
+    </ul>
+    <form class="well form-inline margin-top-20" method="get" action="{:url('AdminCheck/company_list')}">
+        分类:
+        <select class="form-control" name="checked" style="width: 140px;" onchange="console.log(this.value);window.location = '{:url()}?checked='+this.value;">
+                <option value='-1'{$checked === '-1' || !$checked ? 'selected' : ''}>全部</option>
+            <foreach name="checkedArray" key='key' item="vo">
+                <option value='{$key}' {$checked === $key ? 'selected' : ''}>{$vo}</option>
+            </foreach>
+        </select>
+        关键字:
+        <input type="text" class="form-control" name="keyword" style="width: 200px;"
+               value="{$keyword|default=''}" placeholder="请输入关键字...">
+        <input type="submit" class="btn btn-primary" value="搜索"/>
+        <a class="btn btn-danger" href="{:url('AdminCheck/company_list')}">清空</a>
+    </form>
+    <form class="js-ajax-form" action="" method="post">
+        <table class="table table-hover table-bordered table-list">
+            <thead>
+            <tr>
+                <th width="50">ID</th>
+                <th>公司名称</th>
+                <th>法人代表</th>
+                <th>联系人</th>
+                <th>联系电话</th>
+                <th>企业基本情况</th>
+                <th>创建时间</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <foreach name="list" item="vo">
+                <tr>
+                    <td><b>{$vo.id}</b></td>
+                    <td>{$vo.company}</td>
+                    <td>{$vo.legal_man}</td>
+                    <td>{$vo.contact}</td>
+                    <td>{$vo.phone}</td>
+                    <td data-toggle="tooltip" title="{$vo.description}">{$vo.description|mb_substr=0,20}</td>
+                    <td>{$vo['create_time']|date='Y-m-d H:i',###}</td>
+                    <td><span class="label label-{:$vo['checked']!=2?$vo['checked']==1?'success':'default':'danger'}">{$checkedArray[$vo['checked']]}</span></td>
+                    <td>
+                        <a class="btn btn-success btn-xs" onclick="resolve('{$vo.id}',this,'{$vo.company}')"><i class="fa fa-check"></i>&nbsp;通过</a>
+                        <a class="btn btn-danger btn-xs" onclick="reject('{$vo.id}',this,'{$vo.company}')"><i class="fa fa-close"></i>&nbsp;驳回</a>
+                        <if condition="$vo['status']==1">
+                            <a class="btn btn-success btn-xs" onclick="end_status('{$vo.id}','{$vo.company}')"><i class="fa fa-close"></i>&nbsp;禁用</a>
+                        <else/>
+                            <a class="btn btn-danger btn-xs" onclick="start_status('{$vo.id}','{$vo.company}')"><i class="fa fa-close"></i>&nbsp;启用</a>
+                        </if>
+                    </td>
+                </tr>
+            </foreach>
+        </table>
+        <ul class="pagination">{$page|default=''}</ul>
+    </form>
+</div>
+<script src="__STATIC__/js/admin.js"></script>
+<style>
+    #import-loading{
+        top: 0;
+        left: 0;
+        width:100%;
+        height:100%;
+        position: fixed;
+        z-index: 10000;
+        display: none;
+    }
+    #import-loading .import-box{
+        width:50%;
+        min-height:60px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%,-50%);
+        text-align: center;
+        background-color:#fff;
+        border: 1px solid #dd4b39;
+        padding: 10px;
+        font-size: 20px;
+        color:#333;
+        
+    }
+</style>
+<div id="import-loading">
+    <div class="import-box">
+        <i class="fa fa-refresh fa-spin" style="font-size: 40px;display: inline-block;vertical-align: middle;"></i>
+        <label for="" style="display: inline-block;vertical-align: middle;">加载中...</label>
+    </div>
+</div>
+<script>
+    function resolve(id,obj,name) {
+        var confirm = $("#confirm");
+        var callback = $("#callback");
+        confirm.find('.inf').html(`是否通过<b>${name}</b>审核？`);
+        confirm.find('.modal-title').text('通过')
+        confirm.modal('show');
+        confirm.find('#del_act').click(
+            function () {
+                confirm.modal('hide');
+                $.ajax({
+                    url: "{:url('checked_change')}",
+                    data: {
+                        id: id,
+                        type: 1,
+                        reject_note: ''
+                    },
+                    type: 'post',
+                    success: function (res) {
+                        callback.find('.inf').html(res.msg);
+                        callback.modal('show');
+                        if(res.code == 1){
+                            callback.on('hide.bs.modal', function (event) {
+                                window.location = window.location
+                            })
+                        }
+                    },
+                    dataType: 'json',
+                    error: function () {
+                        $('#submit').removeClass('disable')
+                        callback.find('.inf').html('系统错误');
+                        callback.modal('show');
+                    }
+                });
+            }
+        );
+        return false;
+    }
+    function reject(id,obj,name) {
+        var confirm = $("#confirm");
+        var callback = $("#callback");
+        confirm.find('.inf').html(`
+            <h4>驳回${name}的申请</h4>
+            <div class="form-group">
+                <label>驳回原因</label>
+                <textarea type="text" id="rejectNote" class="form-control" placeholder="请输入驳回原因" value=""></textarea>
+            </div>
+            `);
+        confirm.find('.modal-title').text('驳回')
+        confirm.modal('show');
+        confirm.find('#del_act').click(
+            function () {
+                var reject_note = $('#rejectNote').val();
+                confirm.modal('hide');
+                $.ajax({
+                    url: "{:url('checked_change')}",
+                    data: {
+                        id: id,
+                        type: 2,
+                        reject_note:reject_note
+                    },
+                    type: 'post',
+                    success: function (res) {
+                        callback.find('.inf').html(res.msg);
+                        callback.modal('show');
+                        if(res.code == 1){
+                            callback.on('hide.bs.modal', function (event) {
+                                window.location = window.location
+                            })
+                        }
+                    },
+                    dataType: 'json',
+                    error: function () {
+                        $('#submit').removeClass('disable')
+                        callback.find('.inf').html('系统错误');
+                        callback.modal('show');
+                    }
+                });
+            }
+        );
+        return false;
+    }
+    
+    function end_status(id,name) {
+        var confirm = $("#confirm");
+        var callback = $("#callback");
+        confirm.find('.inf').html(`确定要禁用<b>${name}</b>？`);
+        confirm.find('.modal-title').text('禁用')
+        confirm.modal('show');
+        confirm.find('#del_act').click(
+            function () {
+                confirm.modal('hide');
+                $.ajax({
+                    url: "{:url('status_change')}",
+                    data: {
+                        id: id,
+                        status: 0
+                    },
+                    type: 'post',
+                    success: function (res) {
+                        callback.find('.inf').html(res.msg);
+                        callback.modal('show');
+                        if(res.code == 1){
+                            callback.on('hide.bs.modal', function (event) {
+                                window.location = window.location
+                            })
+                        }
+                    },
+                    dataType: 'json',
+                    error: function () {
+                        $('#submit').removeClass('disable')
+                        callback.find('.inf').html('系统错误');
+                        callback.modal('show');
+                    }
+                });
+            }
+        );
+        return false;
+    }
+    function start_status(id,name) {
+        var confirm = $("#confirm");
+        var callback = $("#callback");
+        confirm.find('.inf').html(`确定要启用<b>${name}</b>？`);
+        confirm.find('.modal-title').text('启用')
+        confirm.modal('show');
+        confirm.find('#del_act').click(
+            function () {
+                confirm.modal('hide');
+                $.ajax({
+                    url: "{:url('status_change')}",
+                    data: {
+                        id: id,
+                        status: 1
+                    },
+                    type: 'post',
+                    success: function (res) {
+                        callback.find('.inf').html(res.msg);
+                        callback.modal('show');
+                        if(res.code == 1){
+                            callback.on('hide.bs.modal', function (event) {
+                                window.location = window.location
+                            })
+                        }
+                    },
+                    dataType: 'json',
+                    error: function () {
+                        $('#submit').removeClass('disable')
+                        callback.find('.inf').html('系统错误');
+                        callback.modal('show');
+                    }
+                });
+            }
+        );
+        return false;
+    }
+    
+</script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<include file="public@header"/>
+<script src="__STATIC__/js/sortable/sortable-min.js"></script>
+<style>
+    body.dragging,body.dragging *{cursor:move!important}
+    .dragged{position:absolute;opacity:.5;z-index:2000}
+    /* .wrap .addbtns{-ms-transform:translate(510px,100px);-webkit-transform:translate(510px,100px);-o-transform:translate(510px,100px);-moz-transform:translate(510px,100px)}
+    .wrap .addbtns button{margin-top:20px} */
+    ul.customerlist{width:300px;min-height:400px;margin:0 auto 0 auto;padding-left:0}
+    ul.customerlist .tips{text-align:center;line-height:400px;font-size:16px;color:#aaa}
+    ul.customerlist li{min-height:50px;line-height:40px;margin:10px 0;box-shadow:0 0 20px #ddd;list-style:none;margin-left:0;padding:10px}
+    ul.customerlist li .delete{color:rgba(255,0,0,.6);background:#eee;padding:5px 10px;right:2px;top:2px;border-radius:5px;z-index:2;line-height:15px;cursor:pointer;font-size:12px;float:right;transition:all ease .3s}
+    ul.customerlist li .delete:hover{background:#ddd;color:rgba(255,0,0,1)}
+    ul.customerlist li.placeholder{position:relative;visibility:hidden;transition:all 1s ease}
+    ul.customerlist li.placeholder:before{position:absolute}
+    ul.customerlist li.dragged{box-shadow:0 0 10px #999}
+    ul.customerlist li .customeritem{cursor:pointer}
+    ul.customerlist li .customeritem .value{border:1px solid #ddd;border-radius:3px;height:40px;color:#969696;padding-left:5px}
+    ul.customerlist li .customeritem .value.textarea{height:80px}
+    ul.customerlist li .customeritem .value.file{height:100px;width:100px;line-height:100px;text-align:center}
+</style>
+<script type="text/html" id="input-modal-tpl">
+    <div class="modal-content" style="width:60vw;top: 40%;transform:translateY(-50%);left:0;right:0;bottom:0;margin: auto">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title" id="myModalLabel">编辑【<span>选择器</span>】属性</h4>
+        </div>
+        <form name="input-form" id='input-form'>
+            <div class="modal-body" style="max-height:40vh;overflow:auto">
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">标题</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{label}}" class="form-control" name="label" placeholder="请输入标题">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">name</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{name}}" class="form-control" name="name" placeholder="请输入name">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">类型</label>
+                    <div class="col-sm-10">
+                        <select name="type" class="form-control" value="{{type}}">
+                            <option value='text'>text</option>
+                            <option value='number'>number</option>
+                            <option value='date'>date</option>
+                            <option value='tel'>tel</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">默认值</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{value}}" name="value" class="form-control" placeholder="请输入默认值">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">最小长度</label>
+                    <div class="col-sm-10">
+                        <input type="number" AUTOCOMPLETE="off" value="{{maxlength}}" name="maxlength" class="form-control" placeholder="请输入最大长度">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">最大长度</label>
+                    <div class="col-sm-10">
+                        <input type="number" AUTOCOMPLETE="off" value="{{maxlength}}" name="maxlength" class="form-control" placeholder="请输入最大长度">
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            <button type="button" class="btn btn-primary" onclick="changeItem()">确认</button>
+        </div>
+    </div><!-- /.modal-content -->
+</script>
+
+
+<script type="text/html" id="picker-modal-tpl">
+    <div class="modal-content" style="width:60vw;top: 40%;transform:translateY(-50%);left:0;right:0;bottom:0;margin: auto">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title" id="myModalLabel">编辑【<span>选择器</span>】属性</h4>
+        </div>
+
+        <form name="picker-form" id='picker-form'>
+            <div class="modal-body" style="max-height:40vh;overflow:auto">
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">标题</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{label}}" class="form-control" name="label" placeholder="请输入标题">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">name</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{name}}" class="form-control" name="name" placeholder="请输入标题">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">range_key</label>
+                    <div class="col-sm-10">
+                        <input name="range_key" class="form-control" value="{{range_key}}" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">range</label>
+                    <div class="col-sm-10">
+                        <textarea name="range" class="form-control" value="{{range}}" ></textarea>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            <button type="button" class="btn btn-primary" onclick="changeItem()">确认</button>
+        </div>
+    </div><!-- /.modal-content -->
+</script>
+
+<script type="text/html" id="textarea-modal-tpl">
+    <div class="modal-content" style="width:60vw;top: 40%;transform:translateY(-50%);left:0;right:0;bottom:0;margin: auto">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title" id="myModalLabel">编辑【<span>textarea</span>】属性</h4>
+        </div>
+        <form name="textarea-form" id='textarea-form'>
+            <div class="modal-body" style="max-height:40vh;overflow:auto">
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">标题</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{label}}" class="form-control" name="label" placeholder="请输入标题">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">name</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{name}}" class="form-control" name="name" placeholder="请输入name">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">类型</label>
+                    <div class="col-sm-10">
+                        <select name="type" class="form-control" value="{{type}}">
+                            <option value='text'>text</option>
+                            <option value='number'>number</option>
+                            <option value='date'>date</option>
+                            <option value='tel'>tel</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">默认值</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{value}}" name="value" class="form-control" placeholder="请输入默认值">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">最小长度</label>
+                    <div class="col-sm-10">
+                        <input type="number" AUTOCOMPLETE="off" value="{{maxlength}}" name="maxlength" class="form-control" placeholder="请输入最大长度">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">最大长度</label>
+                    <div class="col-sm-10">
+                        <input type="number" AUTOCOMPLETE="off" value="{{maxlength}}" name="maxlength" class="form-control" placeholder="请输入最大长度">
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            <button type="button" class="btn btn-primary" onclick="changeItem()">确认</button>
+        </div>
+    </div><!-- /.modal-content -->
+</script>
+
+<script type="text/html" id="file-modal-tpl">
+    <div class="modal-content" style="width:60vw;top: 40%;transform:translateY(-50%);left:0;right:0;bottom:0;margin: auto">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title" id="myModalLabel">编辑【<span>附件</span>】属性</h4>
+        </div>
+        <form name="file-form" id='file-form'>
+            <div class="modal-body" style="max-height:40vh;overflow:auto">
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">标题</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{label}}" class="form-control" name="label" placeholder="请输入标题">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">name</label>
+                    <div class="col-sm-10">
+                        <input type="text" AUTOCOMPLETE="off" value="{{name}}" class="form-control" name="name" placeholder="请输入name">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label  class="col-sm-2 control-label">最大长度</label>
+                    <div class="col-sm-10">
+                        <input type="number" AUTOCOMPLETE="off" value="{{maxlength}}" name="maxlength" class="form-control" placeholder="请输入最大长度">
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            <button type="button" class="btn btn-primary" onclick="changeItem()">确认</button>
+        </div>
+    </div><!-- /.modal-content -->
+</script>
+</head>
+<body>
+<!-- 模态框（Modal） -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true"></div>
+
+<div class="wrap js-check-wrap">
+
+	<ul class="nav nav-tabs">
+        <li><a href="{:url('AdminMp/index')}">表单一览</a></li>
+        <li class="active"><a href="{:url('AdminMp/add')}">添加表单</a></li>
+    </ul>
+        <div class="col-md-9">
+            <form id="form-info">
+            <table class="table table-bordered">
+                <tr>
+                    <h3>表单信息填写</h3>
+                </tr>
+                <tr>
+                    <th width="100">表单标题<span class="form-required">*</span></th>
+                    <td>
+                        <input 
+                        AUTOCOMPLETE="off"
+                        class="form-control" type="text" style="width: 400px;" name="title"
+                        placeholder="请输入表单标题"/>
+                    </td>
+                </tr>
+                <tr>
+                    <th width="100">table名<span class="form-required">*</span></th>
+                    <td>
+                        <input 
+                        AUTOCOMPLETE="off"
+                        class="form-control" type="text" style="width: 400px;" name="table_name"
+                        placeholder="请输入table名"/>
+                    </td>
+                </tr>
+                <tr>
+                    <th width="100">表单备注</th>
+                    <td>
+                        <textarea
+                        AUTOCOMPLETE="off"
+                        class="form-control"
+                        style="width: 400px;resize: none;" 
+                        name="note"
+                        placeholder="请输入表单标题"></textarea>
+                    </td>
+                </tr>
+            </table>
+        </form>
+
+            <div class="wrap">
+                <!-- <h3 style=" text-align:center;">简易自定义表单及拖拽排序</h3> -->
+                <div  class="form-group">
+                    <a class="add btn btn-warning" data-target="_oneline"><span class="fa fa-plus"></span> 单行输入框</a>
+                    <a class="add btn btn-warning" data-target="_multiline" ><span class="fa fa-plus"></span> 多行输入域</a>
+                    <a class="add btn btn-warning" data-target="_file" ><span class="fa fa-plus"></span> 附 件</a>
+                    <a class="add btn btn-warning" data-target="_picker" ><span class="fa fa-plus"></span> 选择器</a>
+                </div>
+        
+        
+                <!-- 控件源代码 -->
+                <ul class="originlist" style="display:none;">
+                    <li class="_picker">
+                        <span class="delete fa fa-trash-o"> 删除</span>
+                        <div class="customeritem">
+                            <span class="key" data-title="标题">标题</span> 
+                            <span class="fa fa-edit"></span>
+                            <div class="value input" data-type="picker" data-placeholder="请填写标题">请选择标题</div>
+                        </div>
+                    </li>
+                    <li class="_oneline">
+                        <span class="delete fa fa-trash-o"> 删除</span>
+                        <div class="customeritem">
+                            <span class="key" data-title="标题">标题</span> 
+                            <span class="fa fa-edit"></span>
+                            <div class="value input" data-type="input" data-placeholder="请填写标题">请填写标题</div>
+                        </div>
+                    </li>
+        
+                    <li class="_multiline">
+                        <span class="delete fa fa-trash-o">删除</span> 
+                        <div class="customeritem">
+                            <span class="key" data-title="说明">说明</span> 
+                            <span class="fa fa-edit"></span>
+                            <div class="value textarea" data-type="textarea" data-placeholder="请填写说明">请填写说明</div>
+                        </div>
+                    </li>
+                    <li class="_file">
+                        <span class="delete fa fa-trash-o">删除</span>
+                        <div class="customeritem">
+                            <span class="key" data-title="附件">附件</span> 
+                            <span class="fa fa-edit"></span>
+                            <div class="value file" data-type="file" data-placeholder="请选择附件"><span class="fa fa-plus"></span></div>
+                        </div>
+                    </li>
+                </ul>
+        
+        
+                <ul class="customerlist">
+                    <p class="tips">请点击按钮,添加自定义控件</p>
+                </ul>
+                <button type="button" class="showjson  btn btn-block btn-success" ><span class="fa fa-save"></span> 保 存</button>
+                <div class="console" >
+                </div>
+            </div>
+
+
+                <!-- <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10"> -->
+                        <!-- <button type="submit" class="btn btn-primary js-ajax-submit showjson">{:lang('SAVE')}</button> -->
+                        <!-- <a class="btn btn-default" href="{:url('AdminPage/index')}">{:lang('BACK')}</a> -->
+                    <!-- </div>
+                </div> -->
+            </div>
+        </div>
+
+</div>
+<script type="text/javascript" src="__STATIC__/js/admin.js"></script>
+<!-- <script type="text/javascript" src="__STATIC__/js/admin.js"></script> -->
+<script>
+    let handleObj
+    function handleModal (type = 'picker') {
+        let content = $(`#${type}-modal-tpl`).html()
+        $('#myModal').html(content)
+        $('#myModal').modal('show')
+    }
+    $(function () {
+
+        $('.add').on('click', function () {
+
+            var that = $(this);
+
+            var target = that.data('target');
+
+            $('.customerlist').append('<li> ' + $('.originlist>.' + target).html() + '</li>');
+
+            $("ul.customerlist").sortable();
+
+            //off 先取消绑定，否则会调用多次
+            $('.customeritem > .fa-edit').off('click').on('click', modifytitle);
+            $('.delete').off('click').on('click',deleteitem);
+
+            $('.tips').hide();
+
+        })
+
+        $('.showjson').on('click',function(){
+
+            if($('.customerlist .customeritem').length==0) return;
+
+            var temp=[];
+            var t;
+            $('.customerlist .customeritem').each(function(index,element){
+                t = $(this).children();
+                temp.push({element:$(t[2]).data('type'), ...$(t[2]).data('options')})
+            })
+            let tmp2 = {}
+            let info = $('#form-info').serializeArray();
+            for (let i = 0; i < info.length; i++) {
+                tmp2[info[i].name] = info[i].value
+            }
+            console.log(tmp2)
+            // $('.console').html(JSON.stringify(temp))
+            $.ajax({
+                url: "{:url('AdminMp/addPost')}",
+                type: 'POST',
+                data: {
+                    form_info: tmp2,
+                    form_content: temp
+                }
+            })
+        })
+
+    })
+    function changeItem (e) {
+        let type = handleObj.next().data('type')
+        let data = $(`#${type}-form`).serializeArray()
+        let components = {}
+        for (let i in data) {
+            components[data[i].name] = data[i].value
+        }
+        handleObj.next()[0].dataset.options = JSON.stringify(components)
+        handleObj.prev()[0].innerHTML = components['label']
+        handleObj.next()[0].innerHTML = '请输入' + components['label']
+
+        $('#myModal').html('')
+        $('#myModal').modal('hide')
+    }
+    function modifytitle(e) {
+        handleObj = $(this);
+        console.log(handleObj)
+        let type = handleObj.next().data('type')
+        // console.log(handleObj.next().data('options'))
+        let components = handleObj.next()[0].dataset.options ? JSON.parse(handleObj.next()[0].dataset.options) : {}
+        console.log(components)
+        // let {label,value,minlength,maxlength,required,type,name} = components
+        let content = $(`#${type}-modal-tpl`).html()
+        // 渲染
+        for (let i in components) {
+            let re = new RegExp('{{\\s*' + i + '\\s*}}')
+            content = content.replace(re, components[i] || '')
+            // console.log(content)
+        }
+        content = content.replace(/{{\s*[^\s|}]+\s*}}/g, '')
+
+        $('#myModal').html(content)
+        $('#myModal').modal('show')
+        // let content = $(`#${type}-modal-tpl`).html()
+        // $('#myModal').html(content)
+        // $('#myModal').modal('show')
+
+        // var key = that.find('.key').eq(0);
+        // var value = that.find('.value').eq(0);
+
+        // var newtitle = prompt("请填写标题", key.html());
+        // if ($.trim(newtitle).length > 8) {
+        //     alert('标题长度不能超过8位');
+        // }else if ($.trim(newtitle).length > 0) {
+        //     key.data('title',newtitle).html(newtitle) ;
+        //     if(value.data('type')!='file') value.data('placeholder',newtitle).html( '请填写' + newtitle);
+        // }else{}
+    }
+
+        function deleteitem() {
+        if(confirm('确定要删除吗？')){
+            var that = $(this);
+            var parent = that.parent();
+            parent.remove();
+            if($('.customerlist .customeritem').length==0) $('.tips').show();
+        }
+    }
+</script>
+</body>
+</html>
