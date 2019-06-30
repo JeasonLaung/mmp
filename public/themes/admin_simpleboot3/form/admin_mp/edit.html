@@ -16,7 +16,8 @@
   <div class="wrap js-check-wrap">
   <ul class="nav nav-tabs">
     <li><a href="{:url('AdminMp/index')}">表单一览</a></li>
-    <li  class="active"><a href="{:url('AdminMp/add')}">添加表单</a></li>
+    <li><a href="{:url('AdminMp/add')}">添加表单</a></li>
+    <li class="active"><a>编辑表单</a></li>
   </ul>
   <div id="app">
     <!-- modal -->
@@ -130,7 +131,7 @@
           disabled 
           type="text" 
           class="form-control" 
-          :value="draw_data[index].type"
+          v-model="draw_data[index].type"
           >
           <span class="input-group-addon">mode</span>
           <input 
@@ -140,6 +141,7 @@
           v-model="draw_data[index].mode"
           >
         </div>
+
         <div class="input-group">
           <span class="input-group-addon">name</span>
           <input 
@@ -173,7 +175,7 @@
           class="form-control" 
           style="height: 100px;overflow-y: auto;"
           @input="draw_data[index].html = $event.target.innerHTML"
-          ></div>
+          v-html="item.html"></div>
         </div>
 
         <div class="input-group" v-if="item.type === 'picker' && !item.mode">
@@ -231,7 +233,11 @@
           <span class="glyphicon glyphicon-arrow-down"></span>
           下移
         </button>
-        <button class="btn btn-danger" @click="draw_data.splice(index, 1)">
+        <button class="btn btn-warning" @click="handleCut(index)">
+          <span class="glyphicon glyphicon-minus"></span>
+          去除
+        </button>
+        <button class="btn btn-danger" @click="handleDelete(index)">
           <span class="glyphicon glyphicon-trash"></span>
           删除
         </button>
@@ -336,25 +342,31 @@
         DATA,
         message: 'Hello Vue!',
         table_data: {
-          title: '',
-          name: '',
-          table_name: ''
+          title: "{$form.title}",
+          name: "{$form.name}",
+          table_name: "{$form.table_name}"
         },
-        draw_data: []
+        draw_data: [],
+        delete_data: []
       },
       mounted () {
-        this.table_data = {
-            title: '表单' + new Date().getTime(),
-            name: 'table' + new Date().getTime(),
-            table_name: 'diy_form_' + new Date().getTime()
+        let old = {$form.draw};
+        for (let i in old) {
+          old[i].x_name = old[i].name
+          if (old[i].html) {
+            old[i].html = this.html_entity_decode(old[i].html)
+          }
         }
+        this.draw_data = old
       },
       computed: {
         field_data () {
           if (this.draw_data) {
             let arr = []
             for (let i in this.draw_data) {
-              arr.push(this.draw_data[i].name)
+              if (this.draw_data[i]['name'] && this.draw_data[i].el !== 'note' && this.draw_data[i].el !== 'download') {
+                arr.push(this.draw_data[i].name)
+              }
             }
             return arr.join(',')
           }
@@ -362,6 +374,26 @@
         }
       },
       methods: {
+        html_entity_decode (s) {
+          if  (s.length  ==  0)  return  ""
+          s  =  s.replace(/&amp;lt;/g, "<")
+          s  =  s.replace(/&amp;gt;/g, ">")
+          s  =  s.replace(/&amp;/g, '"')
+          s  =  s.replace(/&amp;quot;/g, "\"")
+          return  s
+        },
+        handleCut (index) {
+          this.draw_data.splice(index, 1)
+        },
+        handleDelete (index) {
+          if (window.confirm('删除操作将删除数据Table的字段，谨慎使用，请使用“去除”代替')) {
+            var tmp = this.draw_data.splice(index, 1)
+            // 是上个版本的删除
+            if (this.draw_data[index] && this.draw_data[index].x_name) {
+              this.delete_data.push(tmp[0].name)
+            }
+          }          
+        },
         handleSave () {
           let validate_data = {}
           for (var i = this.draw_data.length - 1; i >= 0; i--) {
@@ -374,6 +406,7 @@
             }
           }
           let field_data = this.field_data.split(',')
+          console.log(field_data)
           while (field_data.length > 0) {
             let nfield = field_data.splice(0, 1)
             if (field_data.includes(nfield)) {
@@ -384,12 +417,13 @@
           }
           axios({
             method: 'POST',
-            url: "{:url('AdminMp/addPost')}",
+            url: "{:url('AdminMp/editPost')}?id={$id}",
             data: {
                 draw_data: this.draw_data,
                 field_data: this.field_data,
                 validate_data,
-                table_data: this.table_data
+                table_data: this.table_data,
+                delete_data: this.delete_data
             }
           }).then(({data}) => {
             this.feedback = data.msg

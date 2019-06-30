@@ -9,7 +9,7 @@
         <li class="active"><a href="{:url('AdminMp/index')}">表单一览</a></li>
         <li><a href="{:url('AdminMp/add')}">添加表单</a></li>
     </ul>
-    <form class="well form-inline margin-top-20" method="get" action="{:url('AdminPage/index')}">
+    <form class="well form-inline margin-top-20" method="get" action="{:url('AdminMp/index')}">
         标题:
         <input type="text" class="form-control" name="keyword" style="width: 200px;"
                value="{$keyword|default=''}" placeholder="请输入关键字">
@@ -27,7 +27,7 @@
                 <th width="100">ID</th>
                 <th>标题</th>
                 <th width="80">表名</th>
-                <th width="160">发布时间</th>
+                <th width="160">创建时间</th>
                 <th width="80">状态</th>
                 <th width="120">操作</th>
             </tr>
@@ -41,40 +41,48 @@
                     </td>
                     <td>{$vo.id}</td>
                     <td>
-                        <a>
+                        <a href="/form/mp/{$vo.id}" target="blank">
                             {$vo.title}
                         </a>
                     </td>
                     <td>{$vo.table_name}</td>
                     <td>
-                        <empty name="vo.published_time">
+                        <empty name="vo.create_time">
                             未发布
                             <else/>
                             {:date('Y-m-d H:i',$vo['create_time'])}
                         </empty>
                     </td>
                     <td>
-                        <notempty name="vo.post_status">
-                            <a data-toggle="tooltip" title="已发布"><i class="fa fa-check"></i></a>
+                        <notempty name="vo.status">
+                            <a data-toggle="tooltip" onclick="handleOff()" title="已发布"><i class="fa fa-check"></i></a>
                             <else/>
                             <a data-toggle="tooltip" title="未发布"><i class="fa fa-close"></i></a>
                         </notempty>
                     </td>
                     <td>
-                        <a class="btn btn-xs btn-primary" href="{:url('AdminPage/edit',array('id'=>$vo['id']))}">{:lang('EDIT')}</a>
-                        <!-- <a class="btn btn-xs btn-danger js-ajax-delete" href="{:url('AdminPage/delete',array('id'=>$vo['id']))}">{:lang('DELETE')}</a> -->
+                        <a class="btn btn-xs btn-primary" href="{:url('AdminMp/edit',array('id'=>$vo['id']))}">{:lang('EDIT')}</a>
+                        <a class="btn btn-xs btn-danger js-ajax-delete" href="{:url('AdminMp/delete',array('id'=>$vo['id']))}">{:lang('DELETE')}</a>
+                        <a class="btn btn-xs btn-warning js-ajax-delete" href="{:url('AdminMp/copy',array('id'=>$vo['id']))}" data-msg="是否复制这个表的数据">复制</a>
+                        <notempty name="vo.status">
+                            <a class="btn btn-xs btn-danger js-ajax-delete" href="{:url('AdminMp/off',array('id'=>$vo['id']))}" data-msg="是否关闭表单显示">关闭</a>
+                            <else/>
+                            <a class="btn btn-xs btn-success js-ajax-delete" href="{:url('AdminMp/on',array('id'=>$vo['id']))}" data-msg="是否开启表单显示">开启</a>
+                        </notempty>
                     </td>
                 </tr>
             </foreach>
         </table>
-        <div class="table-actions">
+        <!-- <div class="table-actions">
             <button class="btn btn-danger btn-sm js-ajax-submit" type="submit" data-action="{:url('AdminPage/delete')}"
                     data-subcheck="true" data-msg="你确定删除吗？">{:lang('DELETE')}
             </button>
-        </div>
+        </div> -->
         <div class="pagination"></div>
     </form>
 </div>
 <script src="__STATIC__/js/admin.js"></script>
+<script>    
+</script>
 </body>
 </html>
